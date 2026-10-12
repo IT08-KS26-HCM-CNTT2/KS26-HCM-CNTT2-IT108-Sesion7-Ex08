@@ -1,0 +1,35 @@
+PHẦN 1: PHÂN TÍCH LỖI
+1. Chỉ ra các dòng lệnh gây lỗi và nguyên nhân kỹ thuật:
+- Các dòng lệnh gây lỗi trong script hiện tại:
+  "[$(Get-Date)] --- Bat dau quet ---" | Out-File weekly_errors.txt
+  Select-String -Path app.log -Pattern "error" | Out-File weekly_errors.txt
+  "[$(Get-Date)] --- Ket thuc quet ---" | Out-File weekly_errors.txt
+- Nguyên nhân kỹ thuật:
+  + Mặc định, lệnh Out-File trong PowerShell thực hiện cơ chế ghi đè (overwrite). 
+  + Mỗi lần lệnh Out-File được gọi, nó sẽ xóa toàn bộ nội dung cũ có trong file đích (hoặc tạo file mới nếu chưa có) rồi mới ghi nội dung mới vào.
+  + Do đó, dòng bắt đầu bị ghi đè bởi dòng kết quả tìm kiếm lỗi, và cuối cùng dòng kết quả tìm kiếm lại tiếp tục bị ghi đè bởi dòng kết thúc quét.
+2. Mô tả nội dung còn sót lại trong file sau mỗi lần script chạy:
+- Sau khi script chạy xong, trong file weekly_errors.txt chỉ còn lại duy nhất dòng cuối cùng:
+  [<Thời gian hiện tại>] --- Ket thuc quet ---
+- Toàn bộ các dòng log trước đó (cả lịch sử các giờ trước trong tuần và các dòng thông báo bắt đầu, danh sách lỗi tìm được) đều đã bị xóa sạch hoàn toàn.
+PHẦN 2: SỬA LỖI VÀ KIỂM THỬ
+1. Phiên bản script đã sửa đúng quy trình cộng dồn (thêm tham số -Append):
+# Script: hourly_log.ps1 (Đã sửa lỗi)
+# Chạy mỗi giờ, cộng dồn lỗi vào weekly_errors.txt
+"[$(Get-Date)] --- Bat dau quet ---" | Out-File weekly_errors.txt -Append
+Select-String -Path app.log -Pattern "error" | Out-File weekly_errors.txt -Append
+"[$(Get-Date)] --- Ket thuc quet ---" | Out-File weekly_errors.txt -Append
+2. Bảng so sánh Out-File và Out-File -Append / Add-Content:
++-------------------+------------------------------------------+------------------------------------------+
+| Tiêu chí          | Out-File (Mặc định)                      | Out-File -Append / Add-Content           |
++-------------------+------------------------------------------+------------------------------------------+
+| Cơ chế hoạt động  | Ghi đè (Overwrite): Xóa toàn bộ nội      | Ghi nối (Append): Giữ nguyên nội dung    |
+|                   | dung cũ và ghi nội dung mới từ đầu.      | cũ và ghi tiếp nội dung mới vào cuối file|
++-------------------+------------------------------------------+------------------------------------------+
+| Xử lý file chưa   | Tự động tạo file mới.                    | Tự động tạo file mới (nếu file chưa tồn  |
+| tồn tại           |                                          | tại).                                    |
++-------------------+------------------------------------------+------------------------------------------+
+| Ứng dụng thực tế  | Dùng khi muốn tạo báo cáo mới hoàn       | Dùng cho hệ thống ghi log, cộng dồn      |
+|                   | toàn, reset log mỗi lần chạy.            | dữ liệu theo thời gian.                  |
++-------------------+------------------------------------------+------------------------------------------+
+
